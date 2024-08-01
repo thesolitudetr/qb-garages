@@ -94,7 +94,7 @@ Config.HouseParkingDrawText = 'Parking' -- text when driving on to the HOUSE par
 Config.ParkingDistance = 2.0 -- Distance to the parking lot when trying to park the vehicle  (Global, can be overriden by each garage)
 Config.SpawnDistance = 4.5 -- The maximum distance you can be from a parking spot, to spawn a car (Global, can be overriden by each garage)
 Config.DepotPrice = 60.0 -- The price to take out a despawned vehicle from impound.
-Config.DrawTextPosition = 'left' -- location of drawtext: left, top, right
+Config.DrawTextPosition = 'left-center' -- location of drawtexts: 'top' or 'top-right' or 'top-left' or 'bottom' or 'bottom-right' or 'bottom-left' or 'center-right' or 'center-left'
 
 --[[ 
     Job Vehicles Configuration

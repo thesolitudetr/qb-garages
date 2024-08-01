@@ -537,7 +537,7 @@ local function CreateGarageZone()
         if isPointInside and IsAuthorizedToAccessGarage(zone.name) then
             CurrentGarage = zone.name
             local options = {
-                position = "left-center",
+                position = Config.DrawTextPosition,
                 icon = "car"
             }
             lib.showTextUI(Config.Garages[CurrentGarage]['drawText'], options)
@@ -589,7 +589,7 @@ local function RegisterHousePoly(house)
         if isPointInside then
             CurrentHouseGarage = house
             local options = {
-                position = "left-center",
+                position = Config.DrawTextPosition,
                 icon = "car"
             }
             lib.showTextUI(Config.HouseParkingDrawText, options)
