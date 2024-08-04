@@ -122,8 +122,14 @@ Config.CustomIMG = {
     ["r35"] = "https://gtacarmods.com/wp-content/uploads/2021/08/271590_20210818160759_1.jpg"
 }
 Config.BFakePlates = false --If you use Brazzers-FakePlates change this to true
-Config.OXRadial = true --If you want ox lib radial menu set this to true or you want qb-radialmenu just set this to false
-
+Config.OXRadial = false --If you want ox lib radial menu set this to true or you want qb-radialmenu just set this to false
+Config.OXNotify = true
+Config.OxNotifyOptions = {
+    showDuration = true,
+    position = 'top',
+    successText = 'Success',
+    errorText = 'Error'
+}
 Config.JobVehicles = {
 	['someRandomIdentifier'] = { -- <-- jobGarageIdentifier
         label = "Police Vehicles",
