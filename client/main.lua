@@ -138,13 +138,25 @@ function GetVehicleByPlate(plate)
 end
 
 function RemoveRadialOptions()
-    if MenuItemId1 ~= nil then
-        exports['qb-radialmenu']:RemoveOption(MenuItemId1)
-        MenuItemId1 = nil
-    end
-    if MenuItemId2 ~= nil then
-        exports['qb-radialmenu']:RemoveOption(MenuItemId2)
-        MenuItemId2 = nil
+    if Config.OXRadial ~= true then
+        if MenuItemId1 ~= nil then
+            exports['qb-radialmenu']:RemoveOption(MenuItemId1)
+            MenuItemId1 = nil
+        end
+        if MenuItemId2 ~= nil then
+            exports['qb-radialmenu']:RemoveOption(MenuItemId2)
+            MenuItemId2 = nil
+        end
+    else
+        if MenuItemId1 ~= nil then
+            lib.removeRadialItem('MenuItemId1')
+            MenuItemId1 = nil
+        end
+        if MenuItemId2 ~= nil then
+            lib.removeRadialItem('MenuItemId2')
+            MenuItemId2 = nil
+        end
+        TriggerEvent("qb-garages:client:oxrefresh")
     end
 end
 -- Menus
@@ -475,34 +487,70 @@ local function AddRadialParkingOption()
     local ped = PlayerPedId()
     local veh, dist = QBCore.Functions.GetClosestVehicle()
     if (veh and dist <= Config.VehicleParkDistance and Config.AllowParkingFromOutsideVehicle) or IsPedInAnyVehicle(ped) then
-        MenuItemId1 = exports['qb-radialmenu']:AddOption({
-            id = 'put_up_vehicle',
-            title = Lang:t("radial.park_vehicle"),
-            icon = 'square-parking',
-            type = 'client',
-            event = 'qb-garages:client:ParkVehicle',
-            shouldClose = true
-        }, MenuItemId1)
+        if Config.OXRadial ~= true then
+            MenuItemId1 = exports['qb-radialmenu']:AddOption({
+                id = 'put_up_vehicle',
+                title = Lang:t("radial.park_vehicle"),
+                icon = 'square-parking',
+                type = 'client',
+                event = 'qb-garages:client:ParkVehicle',
+                shouldClose = true
+            }, MenuItemId1)
+        else
+            MenuItemId1 = true
+              lib.addRadialItem({
+                id = 'MenuItemId1',
+                icon = 'square-parking',
+                label = Lang:t("radial.park_vehicle"),
+                onSelect = function()
+                  TriggerEvent('qb-garages:client:ParkVehicle')
+                end
+              })
+        end
     end
-    MenuItemId2 = exports['qb-radialmenu']:AddOption({
-        id = 'open_garage_menu',
-        title = Lang:t("radial.open_garage"),
-        icon = 'warehouse',
-        type = 'client',
-        event = 'qb-garages:client:OpenMenu',
-        shouldClose = true
-    }, MenuItemId2)
+    if Config.OXRadial ~= true then
+        MenuItemId2 = exports['qb-radialmenu']:AddOption({
+            id = 'open_garage_menu',
+            title = Lang:t("radial.open_garage"),
+            icon = 'warehouse',
+            type = 'client',
+            event = 'qb-garages:client:OpenMenu',
+            shouldClose = true
+        }, MenuItemId2)
+    else
+        MenuItemId2 = true
+          lib.addRadialItem({
+            id = 'MenuItemId2',
+            icon = 'warehouse',
+            label = Lang:t("radial.open_garage"),
+            onSelect = function()
+              TriggerEvent('qb-garages:client:OpenMenu')
+            end
+          })
+    end
 end
 
 local function AddRadialImpoundOption()
-    MenuItemId1 = exports['qb-radialmenu']:AddOption({
-        id = 'open_garage_menu',
-        title = Lang:t("radial.open_impound"),
-        icon = 'warehouse',
-        type = 'client',
-        event = 'qb-garages:client:OpenMenu',
-        shouldClose = true
-    }, MenuItemId1)
+    if Config.OXRadial ~= true then
+        MenuItemId1 = exports['qb-radialmenu']:AddOption({
+            id = 'open_garage_menu',
+            title = Lang:t("radial.open_impound"),
+            icon = 'warehouse',
+            type = 'client',
+            event = 'qb-garages:client:OpenMenu',
+            shouldClose = true
+        }, MenuItemId1)
+    else
+        MenuItemId1 = true
+        lib.addRadialItem({
+            id = 'MenuItemId1',
+            icon = 'warehouse',
+            label = Lang:t("radial.open_impound"),
+            onSelect = function()
+              TriggerEvent('qb-garages:client:OpenMenu')
+            end
+          })
+    end
 end
 
 local function UpdateRadialMenu()
@@ -528,6 +576,10 @@ local function UpdateRadialMenu()
     end
 end
 
+RegisterNetEvent("qb-garages:client:oxrefresh", function()
+    UpdateRadialMenu()
+end)
+
 local function CreateGarageZone()
     local combo = ComboZone:Create(GarageZones, {
         name = 'garages',
@@ -541,10 +593,12 @@ local function CreateGarageZone()
                 icon = "car"
             }
             lib.showTextUI(Config.Garages[CurrentGarage]['drawText'], options)
+            UpdateRadialMenu()
         else
             CurrentGarage = nil
             RemoveRadialOptions()
             lib.hideTextUI()
+            UpdateRadialMenu()
         end
     end)
 end
@@ -1227,6 +1281,15 @@ end)
 RegisterNetEvent('qb-radialmenu:client:onRadialmenuOpen', function()
     UpdateRadialMenu()
 end)
+
+if Config.OXRadial == true then
+    lib.onCache('vehicle', function(value)
+        UpdateRadialMenu()
+    end)
+    lib.onCache('seat', function(value)
+        UpdateRadialMenu()
+    end)
+end
 
 RegisterNetEvent('qb-garages:client:OpenMenu', function()
     if CurrentGarage then
