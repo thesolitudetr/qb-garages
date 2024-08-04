@@ -94,8 +94,8 @@ Config.HouseParkingDrawText = 'Parking' -- text when driving on to the HOUSE par
 Config.ParkingDistance = 2.0 -- Distance to the parking lot when trying to park the vehicle  (Global, can be overriden by each garage)
 Config.SpawnDistance = 4.5 -- The maximum distance you can be from a parking spot, to spawn a car (Global, can be overriden by each garage)
 Config.DepotPrice = 60.0 -- The price to take out a despawned vehicle from impound.
-Config.DrawTextPosition = 'left-center' -- location of drawtexts: 'top' or 'top-right' or 'top-left' or 'bottom' or 'bottom-right' or 'bottom-left' or 'center-right' or 'center-left'
-
+Config.DrawTextPosition = 'left-center' -- location of drawtexts for ox-lib : 'top' or 'top-right' or 'top-left' or 'bottom' or 'bottom-right' or 'bottom-left' or 'center-right' or 'center-left'
+-- location of drawtexts for qb-core : 'left' or 'right' or 'top'
 --[[ 
     Job Vehicles Configuration
 
@@ -122,8 +122,9 @@ Config.CustomIMG = {
     ["r35"] = "https://gtacarmods.com/wp-content/uploads/2021/08/271590_20210818160759_1.jpg"
 }
 Config.BFakePlates = false --If you use Brazzers-FakePlates change this to true
+Config.OXDrawText = true
 Config.OXRadial = false --If you want ox lib radial menu set this to true or you want qb-radialmenu just set this to false
-Config.OXNotify = true
+Config.OXNotify = false
 Config.OxNotifyOptions = {
     showDuration = true,
     position = 'top',

@@ -614,17 +614,29 @@ local function CreateGarageZone()
     combo:onPlayerInOut(function(isPointInside, l, zone)
         if isPointInside and IsAuthorizedToAccessGarage(zone.name) then
             CurrentGarage = zone.name
-            local options = {
-                position = Config.DrawTextPosition,
-                icon = "car"
-            }
-            lib.showTextUI(Config.Garages[CurrentGarage]['drawText'], options)
-            UpdateRadialMenu()
+            if Config.OXDrawText == true then
+                local options = {
+                    position = Config.DrawTextPosition,
+                    icon = "car"
+                }
+                lib.showTextUI(Config.Garages[CurrentGarage]['drawText'], options)
+            else
+                exports['qb-core']:DrawText(Config.Garages[CurrentGarage]['drawText'], Config.DrawTextPosition)
+            end
+            if Config.OXRadial == true then
+                UpdateRadialMenu()
+            end
         else
             CurrentGarage = nil
             RemoveRadialOptions()
-            lib.hideTextUI()
-            UpdateRadialMenu()
+            if Config.OXDrawText == true then
+                lib.hideTextUI()
+            else
+                exports['qb-core']:HideText()
+            end
+            if Config.OXRadial == true then
+                UpdateRadialMenu()
+            end
         end
     end)
 end
@@ -668,13 +680,21 @@ local function RegisterHousePoly(house)
     zone:onPlayerInOut(function(isPointInside)
         if isPointInside then
             CurrentHouseGarage = house
-            local options = {
-                position = Config.DrawTextPosition,
-                icon = "car"
-            }
-            lib.showTextUI(Config.HouseParkingDrawText, options)
+            if Config.OXDrawText == true then
+                local options = {
+                    position = Config.DrawTextPosition,
+                    icon = "car"
+                }
+                lib.showTextUI(Config.HouseParkingDrawText, options)
+            else
+                exports['qb-core']:DrawText(Config.HouseParkingDrawText, Config.DrawTextPosition)
+            end
         else
-            lib.hideTextUI()
+            if Config.OXDrawText == true then
+                lib.hideTextUI()
+            else
+                exports['qb-core']:HideText()
+            end
             RemoveRadialOptions()
             CurrentHouseGarage = nil
         end
