@@ -314,6 +314,10 @@ local function GetVehicleByPlate(plate)
     end
     return nil
 end
+-- EXPORT FOR TESTING
+if _G.__TEST_MODE__ then
+    _G.GetVehicleByPlate = GetVehicleByPlate
+end
 
 QBCore.Functions.CreateCallback("qb-garage:server:GetGarageVehicles", function(source, cb, garage, garageType, category)
     local src = source
