@@ -55,14 +55,16 @@ QBCore.Commands.Add("pgarage", "Player's Vehicles", {}, false, function(source, 
             TriggerClientEvent('qb-garages:client:openmanage', src, pname, menuoptions)
         end
     end
-end)
+end, Config.ManageVehiclesPermissionLevel)
 
 QBCore.Commands.Add("deletevehicle", "Delete a vehicle with plate", {}, false, function(source, args)
     TriggerEvent('qb-garages:server:deletecar', args[1])
-end)
+end, Config.ManageVehiclesPermissionLevel)
 
 RegisterNetEvent('qb-garages:server:deletecar', function (plate)
     local src = source
+    if not QBCore.Functions.HasPermission(src, Config.ManageVehiclesPermissionLevel) then return end
+    if not plate or type(plate) ~= "string" then return end
     MySQL.query('SELECT * FROM player_vehicles WHERE plate = ?', {plate}, function(result)
         if result[1] then
             MySQL.query('DELETE FROM player_vehicles WHERE plate = ?', {plate}, function(results)
@@ -360,6 +362,23 @@ local function GetDepotGarageVehicles(pData, garage, category, cb)
                 if vehicle.depotprice == 0 then
                     vehicle.depotprice = Config.DepotPrice
                 end
+                local spawnedVehicles = {}
+                if Config.SpawnVehiclesServerside then
+                    local vehicles = GetAllVehicles()
+                    for _, v in pairs(vehicles) do
+                        local pl = GetVehicleNumberPlateText(v)
+                        if pl then
+                            spawnedVehicles[string.upper(pl)] = v
+                        end
+                    end
+                end
+                for _, vehicle in pairs(result) do
+                    if Config.SpawnVehiclesServerside and spawnedVehicles[string.upper(vehicle.plate)] or not QBCore.Shared.Vehicles[vehicle.vehicle] then
+                        goto skip
+                    end
+                    if vehicle.depotprice == 0 then
+                        vehicle.depotprice = Config.DepotPrice
+                    end
 
                 vehicle.parkingspot = nil
                 if vehicle.damage then
