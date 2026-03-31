@@ -188,42 +188,6 @@ end
 -- Menus
 
 --Old menu
---[[ local function PublicGarage(garageName, type)
-    local garage = Config.Garages[garageName]
-    local categories = garage.vehicleCategories
-    local superCategory = GetSuperCategoryFromCategories(categories)
-
-    lib.registerContext({
-            id = 'vehicles_menu',
-            title = garage.label,
-            options = {
-            {
-                title = Lang:t("menu.text.vehicles"),
-                icon = 'car',
-                onSelect = function()
-                    local args = {
-                        garageId = garageName,
-                        garage = garage,
-                        categories = categories,
-                        header = Lang:t("menu.header." .. garage.type .. "_" .. superCategory, {
-                            value = garage.label
-                        }),
-                        superCategory = superCategory,
-                        type = type
-                    }
-                    TriggerEvent('qb-garages:client:GarageMenu', args)
-                end,
-            },
-            {
-                title = Lang:t("menu.leave.car"),
-                onSelect = function () return end
-            }
-        }
-    })
-
-    lib.showContext('vehicles_menu')
-end ]]
-
 local function PublicGarage(garageName, type)
     local garage = Config.Garages[garageName]
     local categories = garage.vehicleCategories
@@ -241,38 +205,6 @@ local function PublicGarage(garageName, type)
     }
     TriggerEvent('qb-garages:client:GarageMenu', args)
 end
-
---[[ local function MenuHouseGarage()
-    local superCategory = GetSuperCategoryFromCategories(Config.HouseGarageCategories)
-
-    lib.registerContext({
-        id = 'vehicles_menu',
-        title = Lang:t("menu.header.house_garage"),
-        options = {
-            {
-                title = Lang:t("menu.text.vehicles"),
-                icon = 'car',
-                onSelect = function()
-                    local args = {
-                        garageId = CurrentHouseGarage,
-                        categories = Config.HouseGarageCategories,
-                        header = Config.HouseGarages[CurrentHouseGarage].label,
-                        garage = Config.HouseGarages[CurrentHouseGarage],
-                        superCategory = superCategory,
-                        type = 'house'
-                    }
-                    TriggerEvent('qb-garages:client:GarageMenu', args)
-                end,
-            },
-            {
-                title = Lang:t("menu.leave.car"),
-                onSelect = function () return end
-            }
-        }
-    })
-
-    lib.showContext('vehicles_menu')
-end ]]
 
 local function MenuHouseGarage()
     local superCategory = GetSuperCategoryFromCategories(Config.HouseGarageCategories)
