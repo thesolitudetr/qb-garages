@@ -315,95 +315,110 @@ local function GetVehicleByPlate(plate)
     return nil
 end
 
+
+local function GetPublicGarageVehicles(pData, garage, cb)
+    GetVehicles(pData.PlayerData.citizenid, garage, 1, function(result)
+        local vehs = {}
+        if result[1] then
+            for _, vehicle in pairs(result) do
+                if vehicle.parkingspot then
+                    local spot = json.decode(vehicle.parkingspot)
+                    if spot and spot.x then
+                        vehicle.parkingspot = vector3(spot.x, spot.y, spot.z)
+                    end
+                end
+                if vehicle.damage then
+                    vehicle.damage = json.decode(vehicle.damage)
+                end
+                vehs[#vehs + 1] = vehicle
+            end
+            cb(vehs)
+        else
+            cb(nil)
+        end
+    end)
+end
+
+
+local function GetDepotGarageVehicles(pData, garage, category, cb)
+    GetDepotVehicles(pData.PlayerData.citizenid, 0, garage, function(result)
+        local tosend = {}
+        if result[1] then
+            if type(category) == 'table' then
+                if TableContains(category, {'car'}) then
+                    category = 'car'
+                elseif TableContains(category, {'plane', 'helicopter'}) then
+                    category = 'air'
+                elseif TableContains(category, 'boat') then
+                    category = 'sea'
+                end
+            end
+            for _, vehicle in pairs(result) do
+                if Config.SpawnVehiclesServerside and GetVehicleByPlate(string.upper(vehicle.plate)) or not QBCore.Shared.Vehicles[vehicle.vehicle] then
+                    goto skip
+                end
+                if vehicle.depotprice == 0 then
+                    vehicle.depotprice = Config.DepotPrice
+                end
+
+                vehicle.parkingspot = nil
+                if vehicle.damage then
+                    vehicle.damage = json.decode(vehicle.damage)
+                end
+
+                if category == "air" and ( QBCore.Shared.Vehicles[vehicle.vehicle].category == "helicopters" or QBCore.Shared.Vehicles[vehicle.vehicle].category == "planes" ) then
+                    tosend[#tosend + 1] = vehicle
+                elseif category == "sea" and QBCore.Shared.Vehicles[vehicle.vehicle].category == "boats" then
+                    tosend[#tosend + 1] = vehicle
+                elseif category == "car" and QBCore.Shared.Vehicles[vehicle.vehicle].category ~= "helicopters" and QBCore.Shared.Vehicles[vehicle.vehicle].category ~= "planes" and QBCore.Shared.Vehicles[vehicle.vehicle].category ~= "boats" then
+                    tosend[#tosend + 1] = vehicle
+                end
+                ::skip::
+            end
+            cb(tosend)
+        else
+            cb(nil)
+        end
+    end)
+end
+
+
+local function GetOtherGarageVehicles(pData, garage, garageType, playerGang, cb)
+    local shared = ''
+    if not TableContains(Config.SharedJobGarages, garage) and not (Config.SharedHouseGarage and garageType == "house") and not ((Config.SharedGangGarages == true or (type(Config.SharedGangGarages) == "table" and Config.SharedGangGarages[playerGang])) and garageType == "gang") then
+        shared = " AND citizenid = '"..pData.PlayerData.citizenid.."'"
+    end
+     MySQL.query('SELECT * FROM player_vehicles WHERE garage = ? AND state = ?'..shared, {garage, 1}, function(result)
+        if result[1] then
+            local vehs = {}
+            for _, vehicle in pairs(result) do
+                local spot = json.decode(vehicle.parkingspot)
+                if vehicle.parkingspot then
+                    vehicle.parkingspot = vector3(spot.x, spot.y, spot.z)
+                end
+                if vehicle.damage then
+                    vehicle.damage = json.decode(vehicle.damage)
+                end
+                vehs[#vehs + 1] = vehicle
+            end
+            cb(vehs)
+        else
+            cb(nil)
+        end
+    end)
+end
+
 QBCore.Functions.CreateCallback("qb-garage:server:GetGarageVehicles", function(source, cb, garage, garageType, category)
     local src = source
     local pData = QBCore.Functions.GetPlayer(src)
     local playerGang = pData.PlayerData.gang.name;
 
     if garageType == "public" then        --Public garages give player cars in the garage only
-        GetVehicles(pData.PlayerData.citizenid, garage, 1, function(result)
-            local vehs = {}
-            if result[1] then
-                for _, vehicle in pairs(result) do
-                    if vehicle.parkingspot then
-                        local spot = json.decode(vehicle.parkingspot)
-                        if spot and spot.x then
-                            vehicle.parkingspot = vector3(spot.x, spot.y, spot.z)
-                        end
-                    end
-                    if vehicle.damage then
-                        vehicle.damage = json.decode(vehicle.damage)
-                    end
-                    vehs[#vehs + 1] = vehicle
-                end
-                cb(vehs)
-            else
-                cb(nil)
-            end
-        end)
+        GetPublicGarageVehicles(pData, garage, cb)
     elseif garageType == "depot" then    --Depot give player cars that are not in garage only
-        GetDepotVehicles(pData.PlayerData.citizenid, 0, garage, function(result)
-            local tosend = {}
-            if result[1] then
-                if type(category) == 'table' then
-                    if TableContains(category, {'car'}) then
-                        category = 'car'
-                    elseif TableContains(category, {'plane', 'helicopter'}) then
-                        category = 'air'
-                    elseif TableContains(category, 'boat') then
-                        category = 'sea'
-                    end
-                end
-                for _, vehicle in pairs(result) do
-                    if Config.SpawnVehiclesServerside and GetVehicleByPlate(string.upper(vehicle.plate)) or not QBCore.Shared.Vehicles[vehicle.vehicle] then
-                        goto skip
-                    end
-                    if vehicle.depotprice == 0 then
-                        vehicle.depotprice = Config.DepotPrice
-                    end
-
-                    vehicle.parkingspot = nil
-                    if vehicle.damage then
-                        vehicle.damage = json.decode(vehicle.damage)
-                    end
-
-                    if category == "air" and ( QBCore.Shared.Vehicles[vehicle.vehicle].category == "helicopters" or QBCore.Shared.Vehicles[vehicle.vehicle].category == "planes" ) then
-                        tosend[#tosend + 1] = vehicle
-                    elseif category == "sea" and QBCore.Shared.Vehicles[vehicle.vehicle].category == "boats" then
-                        tosend[#tosend + 1] = vehicle
-                    elseif category == "car" and QBCore.Shared.Vehicles[vehicle.vehicle].category ~= "helicopters" and QBCore.Shared.Vehicles[vehicle.vehicle].category ~= "planes" and QBCore.Shared.Vehicles[vehicle.vehicle].category ~= "boats" then
-                        tosend[#tosend + 1] = vehicle
-                    end
-                    ::skip::
-                end
-                cb(tosend)
-            else
-                cb(nil)
-            end
-        end)
+        GetDepotGarageVehicles(pData, garage, category, cb)
     else                            --House give all cars in the garage, Job and Gang depend of config
-        local shared = ''
-        if not TableContains(Config.SharedJobGarages, garage) and not (Config.SharedHouseGarage and garageType == "house") and not ((Config.SharedGangGarages == true or (type(Config.SharedGangGarages) == "table" and Config.SharedGangGarages[playerGang])) and garageType == "gang") then
-            shared = " AND citizenid = '"..pData.PlayerData.citizenid.."'"
-        end
-         MySQL.query('SELECT * FROM player_vehicles WHERE garage = ? AND state = ?'..shared, {garage, 1}, function(result)
-            if result[1] then
-                local vehs = {}
-                for _, vehicle in pairs(result) do
-                    local spot = json.decode(vehicle.parkingspot)
-                    if vehicle.parkingspot then
-                        vehicle.parkingspot = vector3(spot.x, spot.y, spot.z)
-                    end
-                    if vehicle.damage then
-                        vehicle.damage = json.decode(vehicle.damage)
-                    end
-                    vehs[#vehs + 1] = vehicle
-                end
-                cb(vehs)
-            else
-                cb(nil)
-            end
-        end)
+        GetOtherGarageVehicles(pData, garage, garageType, playerGang, cb)
     end
 end)
 
