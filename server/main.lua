@@ -622,16 +622,25 @@ end)
 RegisterNetEvent('qb-garage:server:PayDepotPrice', function(data)
     local src = source
     local Player = QBCore.Functions.GetPlayer(src)
+
+    if type(data) ~= 'table' or type(data.vehicle) ~= 'table' or type(data.vehicle.plate) ~= 'string' then
+        return
+    end
+
     local cashBalance = Player.PlayerData.money["cash"]
     local bankBalance = Player.PlayerData.money["bank"]
 
-    
     local vehicle = data.vehicle
 
      MySQL.query('SELECT * FROM player_vehicles WHERE plate = ?', {string.upper(vehicle.plate)}, function(result)
         if result[1] then
-            local vehicle = result[1]
-            local depotPrice = vehicle.depotprice ~= 0 and vehicle.depotprice or Config.DepotPrice
+            local dbVehicle = result[1]
+
+            if dbVehicle.citizenid ~= Player.PlayerData.citizenid then
+                return
+            end
+
+            local depotPrice = dbVehicle.depotprice ~= 0 and dbVehicle.depotprice or Config.DepotPrice
             if cashBalance >= depotPrice then
                 Player.Functions.RemoveMoney("cash", depotPrice, "paid-depot")
             elseif bankBalance >= depotPrice then
