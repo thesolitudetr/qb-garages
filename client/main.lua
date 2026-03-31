@@ -110,7 +110,7 @@ function TrackVehicleByPlate(plate)
 end
 exports("TrackVehicleByPlate", TrackVehicleByPlate)
 
-local function IsStringNilOrEmpty(s)
+function IsStringNilOrEmpty(s)
     return s == nil or s == ''
 end
 
