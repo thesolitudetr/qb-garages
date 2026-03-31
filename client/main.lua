@@ -323,34 +323,6 @@ local function ApplyVehicleDamage(currentVehicle, veh)
     SetVehicleBodyHealth(currentVehicle, body)
 end
 
---[[ local function GetCarDamage(vehicle) -- Not Used
-    local damage = {
-        windows = {},
-        tyres = {},
-        doors = {}
-    }
-    local tyreIndexes = {0, 1, 2, 3, 4, 5, 45, 47}
-
-    for _, i in pairs(tyreIndexes) do
-        damage.tyres[i] = {
-            burst = IsVehicleTyreBurst(vehicle, i, false) == 1,
-            onRim = IsVehicleTyreBurst(vehicle, i, true) == 1,
-            health = GetTyreHealth(vehicle, i)
-        }
-    end
-    for i = 0, 7 do
-        damage.windows[i] = {
-            smashed = not IsVehicleWindowIntact(vehicle, i)
-        }
-    end
-    for i = 0, 5 do
-        damage.doors[i] = {
-            damaged = IsVehicleDoorDamaged(vehicle, i)
-        }
-    end
-    return damage
-end ]]
-
 local function Round(num, numDecimalPlaces)
     return tonumber(string.format("%." .. (numDecimalPlaces or 0) .. "f", num))
 end
