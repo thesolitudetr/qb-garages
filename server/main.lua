@@ -678,10 +678,30 @@ RegisterNetEvent('qb-garage:server:PayDepotPrice', function(data)
 end)
 
 RegisterNetEvent('qb-garages:server:parkVehicle', function(plate)
+    local src = source
+    if type(plate) ~= 'string' then return end
     plate = string.upper(plate)
+
     local vehicle = GetVehicleByPlate(plate)
-    if vehicle then
+    if not vehicle then return end
+
+    local ped = GetPlayerPed(src)
+    local pedCoords = GetEntityCoords(ped)
+    local vehCoords = GetEntityCoords(vehicle)
+
+    if #(pedCoords - vehCoords) > 10.0 then return end
+
+    local pData = QBCore.Functions.GetPlayer(src)
+    if not pData then return end
+
+    if VehicleSpawnerVehicles[plate] then
         DeleteEntity(vehicle)
+    else
+        MySQL.query('SELECT * FROM player_vehicles WHERE plate = ? AND citizenid = ?', {plate, pData.PlayerData.citizenid}, function(result)
+            if result[1] then
+                DeleteEntity(vehicle)
+            end
+        end)
     end
 end)
 
