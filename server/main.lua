@@ -55,14 +55,16 @@ QBCore.Commands.Add("pgarage", "Player's Vehicles", {}, false, function(source, 
             TriggerClientEvent('qb-garages:client:openmanage', src, pname, menuoptions)
         end
     end
-end)
+end, Config.ManageVehiclesPermissionLevel)
 
 QBCore.Commands.Add("deletevehicle", "Delete a vehicle with plate", {}, false, function(source, args)
     TriggerEvent('qb-garages:server:deletecar', args[1])
-end)
+end, Config.ManageVehiclesPermissionLevel)
 
 RegisterNetEvent('qb-garages:server:deletecar', function (plate)
     local src = source
+    if not QBCore.Functions.HasPermission(src, Config.ManageVehiclesPermissionLevel) then return end
+    if not plate or type(plate) ~= "string" then return end
     MySQL.query('SELECT * FROM player_vehicles WHERE plate = ?', {plate}, function(result)
         if result[1] then
             MySQL.query('DELETE FROM player_vehicles WHERE plate = ?', {plate}, function(results)
