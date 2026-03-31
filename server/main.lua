@@ -454,48 +454,42 @@ if Config.BFakePlates then
             if not Config.AllowParkingAnyonesVehicle then
                 addSQLForAllowParkingAnyonesVehicle = " AND citizenid = '"..pData.PlayerData.citizenid.."' "
             end
-             MySQL.query('SELECT * FROM player_vehicles WHERE plate = ? ' .. addSQLForAllowParkingAnyonesVehicle,{plate}, function(result)
+             MySQL.query('SELECT * FROM player_vehicles WHERE (plate = ?' .. addSQLForAllowParkingAnyonesVehicle .. ') OR fakeplate = ?',{plate, plate}, function(result)
                 if result[1] then
                     cb(true)
                 else
-                    MySQL.query('SELECT * FROM player_vehicles WHERE fakeplate = ?', {plate}, function(fakeplate)
-                        if fakeplate[1] then
-                            cb(true)
-                        else
-                            cb(false)
-                        end
-                    end)
+                    cb(false)
                 end
             end)
         elseif garageType == "house" then     --House garages only for player cars that have keys of the house
-             MySQL.query('SELECT * FROM player_vehicles WHERE plate = ?', {plate}, function(result)
+             MySQL.query('SELECT * FROM player_vehicles WHERE plate = ? OR fakeplate = ?', {plate, plate}, function(result)
                 if result[1] then
                     cb(true)
                 else
-                    MySQL.query('SELECT * FROM player_vehicles WHERE fakeplate = ?', {plate}, function(fakeplate)
-                        if fakeplate[1] then
-                            cb(true)
-                        else
-                            cb(false)
-                        end
-                    end)
+                    cb(false)
                 end
             end)
         elseif garageType == "gang" then        --Gang garages only for gang members cars (for sharing)
-             MySQL.query('SELECT * FROM player_vehicles WHERE plate = ?', {plate}, function(result)
+             MySQL.query('SELECT *, CASE WHEN plate = ? THEN 1 ELSE 0 END AS is_real_plate FROM player_vehicles WHERE plate = ? OR fakeplate = ?', {plate, plate, plate}, function(result)
                 if result[1] then
-                    --Check if found owner is part of the gang
-                    local Player = QBCore.Functions.GetPlayer(source)
-                    local playerGang = Player.PlayerData.gang.name
-                    cb(playerGang == gang)
-                else
-                    MySQL.query('SELECT * FROM player_vehicles WHERE fakeplate = ?', {plate}, function(fakeplate)
-                        if fakeplate[1] then
-                            cb(true)
-                        else
-                            cb(false)
+                    local isReal = false
+                    for i=1, #result do
+                        if result[i].is_real_plate == 1 then
+                            isReal = true
+                            break
                         end
-                    end)
+                    end
+
+                    if isReal then
+                        --Check if found owner is part of the gang
+                        local Player = QBCore.Functions.GetPlayer(source)
+                        local playerGang = Player.PlayerData.gang.name
+                        cb(playerGang == gang)
+                    else
+                        cb(true)
+                    end
+                else
+                    cb(false)
                 end
             end)
         else                            --Job garages only for cars that are owned by someone (for sharing and service) or only by player depending of config
@@ -503,17 +497,11 @@ if Config.BFakePlates then
             if not TableContains(Config.SharedJobGarages, garage) then
                 shared = " AND citizenid = '"..pData.PlayerData.citizenid.."'"
             end
-             MySQL.query('SELECT * FROM player_vehicles WHERE plate = ?'..shared, {plate}, function(result)
+             MySQL.query('SELECT * FROM player_vehicles WHERE (plate = ? OR fakeplate = ?)'..shared, {plate, plate}, function(result)
                 if result[1] then
                     cb(true)
                 else
-                    MySQL.query('SELECT * FROM player_vehicles WHERE fakeplate = ?'..shared, {plate}, function(fakeplate)
-                        if fakeplate[1] then
-                            cb(true)
-                        else
-                            cb(false)
-                        end
-                    end)
+                    cb(false)
                 end
             end)
         end
