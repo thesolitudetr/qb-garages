@@ -280,29 +280,32 @@ else
 end
 
 local function GetVehicles(citizenid, garageName, state, cb)
-    local result = nil
     if not Config.GlobalParking then
-        result = MySQL.Sync.fetchAll('SELECT * FROM player_vehicles WHERE citizenid = @citizenid AND garage = @garage AND state = @state', {
+        MySQL.query('SELECT * FROM player_vehicles WHERE citizenid = @citizenid AND garage = @garage AND state = @state', {
             ['@citizenid'] = citizenid,
             ['@garage'] = garageName,
             ['@state'] = state
-        })
+        }, function(result)
+            cb(result)
+        end)
     else
-        result = MySQL.Sync.fetchAll('SELECT * FROM player_vehicles WHERE citizenid = @citizenid AND state = @state', {
+        MySQL.query('SELECT * FROM player_vehicles WHERE citizenid = @citizenid AND state = @state', {
             ['@citizenid'] = citizenid,
             ['@state'] = state
-        })
+        }, function(result)
+            cb(result)
+        end)
     end
-    cb(result)
 end
 
 local function GetDepotVehicles(citizenid, state, garage, cb)
-    local result = MySQL.Sync.fetchAll("SELECT * FROM player_vehicles WHERE citizenid = @citizenid AND (state = @state OR garage = @garage OR garage IS NULL or garage = '')", {
+    MySQL.query("SELECT * FROM player_vehicles WHERE citizenid = @citizenid AND (state = @state OR garage = @garage OR garage IS NULL or garage = '')", {
         ['@citizenid'] = citizenid,
         ['@state'] = state,
         ['@garage'] = garage
-    })
-    cb(result)
+    }, function(result)
+        cb(result)
+    end)
 end
 
 local function GetVehicleByPlate(plate)
