@@ -55,14 +55,16 @@ QBCore.Commands.Add("pgarage", "Player's Vehicles", {}, false, function(source, 
             TriggerClientEvent('qb-garages:client:openmanage', src, pname, menuoptions)
         end
     end
-end)
+end, Config.ManageVehiclesPermissionLevel)
 
 QBCore.Commands.Add("deletevehicle", "Delete a vehicle with plate", {}, false, function(source, args)
     TriggerEvent('qb-garages:server:deletecar', args[1])
-end)
+end, Config.ManageVehiclesPermissionLevel)
 
 RegisterNetEvent('qb-garages:server:deletecar', function (plate)
     local src = source
+    if not QBCore.Functions.HasPermission(src, Config.ManageVehiclesPermissionLevel) then return end
+    if not plate or type(plate) ~= "string" then return end
     MySQL.query('SELECT * FROM player_vehicles WHERE plate = ?', {plate}, function(result)
         if result[1] then
             MySQL.query('DELETE FROM player_vehicles WHERE plate = ?', {plate}, function(results)
@@ -278,29 +280,32 @@ else
 end
 
 local function GetVehicles(citizenid, garageName, state, cb)
-    local result = nil
     if not Config.GlobalParking then
-        result = MySQL.Sync.fetchAll('SELECT * FROM player_vehicles WHERE citizenid = @citizenid AND garage = @garage AND state = @state', {
+        MySQL.query('SELECT * FROM player_vehicles WHERE citizenid = @citizenid AND garage = @garage AND state = @state', {
             ['@citizenid'] = citizenid,
             ['@garage'] = garageName,
             ['@state'] = state
-        })
+        }, function(result)
+            cb(result)
+        end)
     else
-        result = MySQL.Sync.fetchAll('SELECT * FROM player_vehicles WHERE citizenid = @citizenid AND state = @state', {
+        MySQL.query('SELECT * FROM player_vehicles WHERE citizenid = @citizenid AND state = @state', {
             ['@citizenid'] = citizenid,
             ['@state'] = state
-        })
+        }, function(result)
+            cb(result)
+        end)
     end
-    cb(result)
 end
 
 local function GetDepotVehicles(citizenid, state, garage, cb)
-    local result = MySQL.Sync.fetchAll("SELECT * FROM player_vehicles WHERE citizenid = @citizenid AND (state = @state OR garage = @garage OR garage IS NULL or garage = '')", {
+    MySQL.query("SELECT * FROM player_vehicles WHERE citizenid = @citizenid AND (state = @state OR garage = @garage OR garage IS NULL or garage = '')", {
         ['@citizenid'] = citizenid,
         ['@state'] = state,
         ['@garage'] = garage
-    })
-    cb(result)
+    }, function(result)
+        cb(result)
+    end)
 end
 
 local function GetVehicleByPlate(plate)
@@ -315,95 +320,127 @@ local function GetVehicleByPlate(plate)
     return nil
 end
 
-QBCore.Functions.CreateCallback("qb-garage:server:GetGarageVehicles", function(source, cb, garage, garageType, category)
-    local src = source
-    local pData = QBCore.Functions.GetPlayer(src)
-    local playerGang = pData.PlayerData.gang.name;
 
-    if garageType == "public" then        --Public garages give player cars in the garage only
-        GetVehicles(pData.PlayerData.citizenid, garage, 1, function(result)
-            local vehs = {}
-            if result[1] then
-                for _, vehicle in pairs(result) do
-                    if vehicle.parkingspot then
-                        local spot = json.decode(vehicle.parkingspot)
-                        if spot and spot.x then
-                            vehicle.parkingspot = vector3(spot.x, spot.y, spot.z)
+local function GetPublicGarageVehicles(pData, garage, cb)
+    GetVehicles(pData.PlayerData.citizenid, garage, 1, function(result)
+        local vehs = {}
+        if result[1] then
+            for _, vehicle in pairs(result) do
+                if vehicle.parkingspot then
+                    local spot = json.decode(vehicle.parkingspot)
+                    if spot and spot.x then
+                        vehicle.parkingspot = vector3(spot.x, spot.y, spot.z)
+                    end
+                end
+                if vehicle.damage then
+                    vehicle.damage = json.decode(vehicle.damage)
+                end
+                vehs[#vehs + 1] = vehicle
+            end
+            cb(vehs)
+        else
+            cb(nil)
+        end
+    end)
+end
+
+
+local function GetDepotGarageVehicles(pData, garage, category, cb)
+    GetDepotVehicles(pData.PlayerData.citizenid, 0, garage, function(result)
+        local tosend = {}
+        if result[1] then
+            if type(category) == 'table' then
+                if TableContains(category, {'car'}) then
+                    category = 'car'
+                elseif TableContains(category, {'plane', 'helicopter'}) then
+                    category = 'air'
+                elseif TableContains(category, 'boat') then
+                    category = 'sea'
+                end
+            end
+            for _, vehicle in pairs(result) do
+                if Config.SpawnVehiclesServerside and GetVehicleByPlate(string.upper(vehicle.plate)) or not QBCore.Shared.Vehicles[vehicle.vehicle] then
+                    goto skip
+                end
+                if vehicle.depotprice == 0 then
+                    vehicle.depotprice = Config.DepotPrice
+                end
+                local spawnedVehicles = {}
+                if Config.SpawnVehiclesServerside then
+                    local vehicles = GetAllVehicles()
+                    for _, v in pairs(vehicles) do
+                        local pl = GetVehicleNumberPlateText(v)
+                        if pl then
+                            spawnedVehicles[string.upper(pl)] = v
                         end
                     end
-                    if vehicle.damage then
-                        vehicle.damage = json.decode(vehicle.damage)
-                    end
-                    vehs[#vehs + 1] = vehicle
-                end
-                cb(vehs)
-            else
-                cb(nil)
-            end
-        end)
-    elseif garageType == "depot" then    --Depot give player cars that are not in garage only
-        GetDepotVehicles(pData.PlayerData.citizenid, 0, garage, function(result)
-            local tosend = {}
-            if result[1] then
-                if type(category) == 'table' then
-                    if TableContains(category, {'car'}) then
-                        category = 'car'
-                    elseif TableContains(category, {'plane', 'helicopter'}) then
-                        category = 'air'
-                    elseif TableContains(category, 'boat') then
-                        category = 'sea'
-                    end
                 end
                 for _, vehicle in pairs(result) do
-                    if Config.SpawnVehiclesServerside and GetVehicleByPlate(string.upper(vehicle.plate)) or not QBCore.Shared.Vehicles[vehicle.vehicle] then
+                    if Config.SpawnVehiclesServerside and spawnedVehicles[string.upper(vehicle.plate)] or not QBCore.Shared.Vehicles[vehicle.vehicle] then
                         goto skip
                     end
                     if vehicle.depotprice == 0 then
                         vehicle.depotprice = Config.DepotPrice
                     end
 
-                    vehicle.parkingspot = nil
-                    if vehicle.damage then
-                        vehicle.damage = json.decode(vehicle.damage)
-                    end
+                vehicle.parkingspot = nil
+                if vehicle.damage then
+                    vehicle.damage = json.decode(vehicle.damage)
+                end
 
-                    if category == "air" and ( QBCore.Shared.Vehicles[vehicle.vehicle].category == "helicopters" or QBCore.Shared.Vehicles[vehicle.vehicle].category == "planes" ) then
-                        tosend[#tosend + 1] = vehicle
-                    elseif category == "sea" and QBCore.Shared.Vehicles[vehicle.vehicle].category == "boats" then
-                        tosend[#tosend + 1] = vehicle
-                    elseif category == "car" and QBCore.Shared.Vehicles[vehicle.vehicle].category ~= "helicopters" and QBCore.Shared.Vehicles[vehicle.vehicle].category ~= "planes" and QBCore.Shared.Vehicles[vehicle.vehicle].category ~= "boats" then
-                        tosend[#tosend + 1] = vehicle
-                    end
-                    ::skip::
+                if category == "air" and ( QBCore.Shared.Vehicles[vehicle.vehicle].category == "helicopters" or QBCore.Shared.Vehicles[vehicle.vehicle].category == "planes" ) then
+                    tosend[#tosend + 1] = vehicle
+                elseif category == "sea" and QBCore.Shared.Vehicles[vehicle.vehicle].category == "boats" then
+                    tosend[#tosend + 1] = vehicle
+                elseif category == "car" and QBCore.Shared.Vehicles[vehicle.vehicle].category ~= "helicopters" and QBCore.Shared.Vehicles[vehicle.vehicle].category ~= "planes" and QBCore.Shared.Vehicles[vehicle.vehicle].category ~= "boats" then
+                    tosend[#tosend + 1] = vehicle
                 end
-                cb(tosend)
-            else
-                cb(nil)
+                ::skip::
             end
-        end)
-    else                            --House give all cars in the garage, Job and Gang depend of config
-        local shared = ''
-        if not TableContains(Config.SharedJobGarages, garage) and not (Config.SharedHouseGarage and garageType == "house") and not ((Config.SharedGangGarages == true or (type(Config.SharedGangGarages) == "table" and Config.SharedGangGarages[playerGang])) and garageType == "gang") then
-            shared = " AND citizenid = '"..pData.PlayerData.citizenid.."'"
+            cb(tosend)
+        else
+            cb(nil)
         end
-         MySQL.query('SELECT * FROM player_vehicles WHERE garage = ? AND state = ?'..shared, {garage, 1}, function(result)
-            if result[1] then
-                local vehs = {}
-                for _, vehicle in pairs(result) do
-                    local spot = json.decode(vehicle.parkingspot)
-                    if vehicle.parkingspot then
-                        vehicle.parkingspot = vector3(spot.x, spot.y, spot.z)
-                    end
-                    if vehicle.damage then
-                        vehicle.damage = json.decode(vehicle.damage)
-                    end
-                    vehs[#vehs + 1] = vehicle
+    end)
+end
+
+
+local function GetOtherGarageVehicles(pData, garage, garageType, playerGang, cb)
+    local shared = ''
+    if not TableContains(Config.SharedJobGarages, garage) and not (Config.SharedHouseGarage and garageType == "house") and not ((Config.SharedGangGarages == true or (type(Config.SharedGangGarages) == "table" and Config.SharedGangGarages[playerGang])) and garageType == "gang") then
+        shared = " AND citizenid = '"..pData.PlayerData.citizenid.."'"
+    end
+     MySQL.query('SELECT * FROM player_vehicles WHERE garage = ? AND state = ?'..shared, {garage, 1}, function(result)
+        if result[1] then
+            local vehs = {}
+            for _, vehicle in pairs(result) do
+                local spot = json.decode(vehicle.parkingspot)
+                if vehicle.parkingspot then
+                    vehicle.parkingspot = vector3(spot.x, spot.y, spot.z)
                 end
-                cb(vehs)
-            else
-                cb(nil)
+                if vehicle.damage then
+                    vehicle.damage = json.decode(vehicle.damage)
+                end
+                vehs[#vehs + 1] = vehicle
             end
-        end)
+            cb(vehs)
+        else
+            cb(nil)
+        end
+    end)
+end
+
+QBCore.Functions.CreateCallback("qb-garage:server:GetGarageVehicles", function(source, cb, garage, garageType, category)
+    local src = source
+    local pData = QBCore.Functions.GetPlayer(src)
+    local playerGang = pData.PlayerData.gang.name;
+
+    if garageType == "public" then        --Public garages give player cars in the garage only
+        GetPublicGarageVehicles(pData, garage, cb)
+    elseif garageType == "depot" then    --Depot give player cars that are not in garage only
+        GetDepotGarageVehicles(pData, garage, category, cb)
+    else                            --House give all cars in the garage, Job and Gang depend of config
+        GetOtherGarageVehicles(pData, garage, garageType, playerGang, cb)
     end
 end)
 
@@ -417,48 +454,42 @@ if Config.BFakePlates then
             if not Config.AllowParkingAnyonesVehicle then
                 addSQLForAllowParkingAnyonesVehicle = " AND citizenid = '"..pData.PlayerData.citizenid.."' "
             end
-             MySQL.query('SELECT * FROM player_vehicles WHERE plate = ? ' .. addSQLForAllowParkingAnyonesVehicle,{plate}, function(result)
+             MySQL.query('SELECT * FROM player_vehicles WHERE (plate = ?' .. addSQLForAllowParkingAnyonesVehicle .. ') OR fakeplate = ?',{plate, plate}, function(result)
                 if result[1] then
                     cb(true)
                 else
-                    MySQL.query('SELECT * FROM player_vehicles WHERE fakeplate = ?', {plate}, function(fakeplate)
-                        if fakeplate[1] then
-                            cb(true)
-                        else
-                            cb(false)
-                        end
-                    end)
+                    cb(false)
                 end
             end)
         elseif garageType == "house" then     --House garages only for player cars that have keys of the house
-             MySQL.query('SELECT * FROM player_vehicles WHERE plate = ?', {plate}, function(result)
+             MySQL.query('SELECT * FROM player_vehicles WHERE plate = ? OR fakeplate = ?', {plate, plate}, function(result)
                 if result[1] then
                     cb(true)
                 else
-                    MySQL.query('SELECT * FROM player_vehicles WHERE fakeplate = ?', {plate}, function(fakeplate)
-                        if fakeplate[1] then
-                            cb(true)
-                        else
-                            cb(false)
-                        end
-                    end)
+                    cb(false)
                 end
             end)
         elseif garageType == "gang" then        --Gang garages only for gang members cars (for sharing)
-             MySQL.query('SELECT * FROM player_vehicles WHERE plate = ?', {plate}, function(result)
+             MySQL.query('SELECT *, CASE WHEN plate = ? THEN 1 ELSE 0 END AS is_real_plate FROM player_vehicles WHERE plate = ? OR fakeplate = ?', {plate, plate, plate}, function(result)
                 if result[1] then
-                    --Check if found owner is part of the gang
-                    local Player = QBCore.Functions.GetPlayer(source)
-                    local playerGang = Player.PlayerData.gang.name
-                    cb(playerGang == gang)
-                else
-                    MySQL.query('SELECT * FROM player_vehicles WHERE fakeplate = ?', {plate}, function(fakeplate)
-                        if fakeplate[1] then
-                            cb(true)
-                        else
-                            cb(false)
+                    local isReal = false
+                    for i=1, #result do
+                        if result[i].is_real_plate == 1 then
+                            isReal = true
+                            break
                         end
-                    end)
+                    end
+
+                    if isReal then
+                        --Check if found owner is part of the gang
+                        local Player = QBCore.Functions.GetPlayer(source)
+                        local playerGang = Player.PlayerData.gang.name
+                        cb(playerGang == gang)
+                    else
+                        cb(true)
+                    end
+                else
+                    cb(false)
                 end
             end)
         else                            --Job garages only for cars that are owned by someone (for sharing and service) or only by player depending of config
@@ -466,17 +497,11 @@ if Config.BFakePlates then
             if not TableContains(Config.SharedJobGarages, garage) then
                 shared = " AND citizenid = '"..pData.PlayerData.citizenid.."'"
             end
-             MySQL.query('SELECT * FROM player_vehicles WHERE plate = ?'..shared, {plate}, function(result)
+             MySQL.query('SELECT * FROM player_vehicles WHERE (plate = ? OR fakeplate = ?)'..shared, {plate, plate}, function(result)
                 if result[1] then
                     cb(true)
                 else
-                    MySQL.query('SELECT * FROM player_vehicles WHERE fakeplate = ?'..shared, {plate}, function(fakeplate)
-                        if fakeplate[1] then
-                            cb(true)
-                        else
-                            cb(false)
-                        end
-                    end)
+                    cb(false)
                 end
             end)
         end
@@ -644,10 +669,30 @@ RegisterNetEvent('qb-garage:server:PayDepotPrice', function(data)
 end)
 
 RegisterNetEvent('qb-garages:server:parkVehicle', function(plate)
+    local src = source
+    if type(plate) ~= 'string' then return end
     plate = string.upper(plate)
+
     local vehicle = GetVehicleByPlate(plate)
-    if vehicle then
+    if not vehicle then return end
+
+    local ped = GetPlayerPed(src)
+    local pedCoords = GetEntityCoords(ped)
+    local vehCoords = GetEntityCoords(vehicle)
+
+    if #(pedCoords - vehCoords) > 10.0 then return end
+
+    local pData = QBCore.Functions.GetPlayer(src)
+    if not pData then return end
+
+    if VehicleSpawnerVehicles[plate] then
         DeleteEntity(vehicle)
+    else
+        MySQL.query('SELECT * FROM player_vehicles WHERE plate = ? AND citizenid = ?', {plate, pData.PlayerData.citizenid}, function(result)
+            if result[1] then
+                DeleteEntity(vehicle)
+            end
+        end)
     end
 end)
 

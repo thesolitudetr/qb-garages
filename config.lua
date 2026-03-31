@@ -61,6 +61,7 @@ Config = Config or {}
 Config.TrackVehicleByPlateCommand = 'trackvehicle'
 Config.EnableTrackVehicleByPlateCommand = true -- Allow players to track their vehicles by plate using /trackvehicle <plate>
 Config.TrackVehicleByPlateCommandPermissionLevel = 'god' -- Permission level required to use /trackvehicle <plate>, false for anyone / everyone
+Config.ManageVehiclesPermissionLevel = 'admin' -- Permission level required to use /pgarage and /deletevehicle
 
 -- NEW --
 

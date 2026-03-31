@@ -187,6 +187,7 @@ function RemoveRadialOptions()
 end
 -- Menus
 
+--Old menu
 local function PublicGarage(garageName, type)
     local garage = Config.Garages[garageName]
     local categories = garage.vehicleCategories
