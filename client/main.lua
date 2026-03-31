@@ -355,6 +355,10 @@ local function Round(num, numDecimalPlaces)
     return tonumber(string.format("%." .. (numDecimalPlaces or 0) .. "f", num))
 end
 
+if _G.TESTING then
+    _G.Round = Round
+end
+
 local function ExitAndDeleteVehicle(vehicle)
     local garage = Config.Garages[CurrentGarage]
     local exitLocation = nil
