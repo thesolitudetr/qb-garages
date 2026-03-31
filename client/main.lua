@@ -352,7 +352,11 @@ end
 end ]]
 
 local function Round(num, numDecimalPlaces)
-    return tonumber(string.format("%." .. (numDecimalPlaces or 0) .. "f", num))
+    local places = numDecimalPlaces or 0
+    if places < 0 then
+        places = 0
+    end
+    return tonumber(string.format("%." .. places .. "f", num))
 end
 
 local function ExitAndDeleteVehicle(vehicle)
